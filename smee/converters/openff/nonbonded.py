@@ -220,23 +220,35 @@ def _make_v_site_electrostatics_compatible(
         potentials = {}
 
         for key, potential in handler.potentials.items():
+            print(key, potential, key.associated_handler)
             # for some reason interchange lists this as electrostatics and not v-sites
-            if key.associated_handler != "Electrostatics":
-                potentials[key] = potential
-                continue
-
-            assert key.mult is None
-
-            for i in range(len(potential.parameters["charge_increments"])):
+            if key.associated_handler == "ChargeIncrementModel":
                 mult_key = copy.deepcopy(key)
-                mult_key.mult = i
-
                 mult_potential = copy.deepcopy(potential)
                 mult_potential.parameters = {
-                    "charge": potential.parameters["charge_increments"][i]
+                    "charge": potential.parameters["charge_increment"]
                 }
                 assert mult_key not in potentials
                 potentials[mult_key] = mult_potential
+            
+            elif key.associated_handler == "Electrostatics":
+                assert key.mult is None
+
+                charge_increments = potential.parameters["charge_increments"]
+
+                for i in range(len(charge_increments)):
+                    mult_key = copy.deepcopy(key)
+                    mult_key.mult = i
+
+                    mult_potential = copy.deepcopy(potential)
+                    mult_potential.parameters = {
+                        "charge": charge_increments[i]
+                    }
+                    assert mult_key not in potentials
+                    potentials[mult_key] = mult_potential
+            else:
+                potentials[key] = potential
+                continue
 
         handler.potentials = potentials
         handlers[handler_idx] = handler
